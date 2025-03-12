@@ -32,5 +32,12 @@ CTestTestfile.cmake
 /build
 /third-party
 
-# Github aciton
+# Github actions
 !.github
+
+# Patches
+*.patch
+
+# Ignore build directory
+/build
+/bld

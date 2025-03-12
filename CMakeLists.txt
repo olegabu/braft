@@ -22,7 +22,7 @@ endif()
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 include(FindThreads)
-include(FindProtobuf)
+find_package(Protobuf CONFIG REQUIRED)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     # require at least gcc 4.8
@@ -47,19 +47,16 @@ if ((NOT LEVELDB_INCLUDE_PATH) OR (NOT LEVELDB_LIB))
     message(FATAL_ERROR "Fail to find leveldb")
 endif()
 
-find_path(GFLAGS_INCLUDE_PATH NAMES gflags/gflags.h)
-find_library(GFLAGS_LIB NAMES gflags)
+find_package(gflags CONFIG REQUIRED)
+get_target_property(GFLAGS_INCLUDE_PATH gflags::gflags INTERFACE_INCLUDE_DIRECTORIES)
+set(GFLAGS_LIB gflags::gflags)
 if ((NOT GFLAGS_INCLUDE_PATH) OR (NOT GFLAGS_LIB))
     message(FATAL_ERROR "Fail to find gflags")
 endif()
 
 if(BRPC_WITH_GLOG)
-    find_path(GLOG_INCLUDE_PATH NAMES glog/logging.h)
-    find_library(GLOG_LIB NAMES glog)
-    if((NOT GLOG_INCLUDE_PATH) OR (NOT GLOG_LIB))
-        message(FATAL_ERROR "Fail to find glog")
-    endif()
-    include_directories(${GLOG_INCLUDE_PATH})
+    find_package(glog CONFIG REQUIRED)
+    set(GLOG_LIB glog::glog)
 endif()
 
 if(LEVELDB_WITH_SNAPPY)
@@ -72,18 +69,13 @@ if ((NOT BRPC_INCLUDE_PATH) OR (NOT BRPC_LIB))
     message(FATAL_ERROR "Fail to find brpc")
 endif()
 
-if (NOT PROTOBUF_PROTOC_EXECUTABLE)
+set(PROTOBUF_LIBRARY protobuf::libprotobuf)
+if (0)
     get_filename_component(PROTO_LIB_DIR ${PROTOBUF_LIBRARY} DIRECTORY)
     set (PROTOBUF_PROTOC_EXECUTABLE "${PROTO_LIB_DIR}/../bin/protoc")
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(OPENSSL_ROOT_DIR
-        "/usr/local/opt/openssl"    # Homebrew installed OpenSSL
-        )
-endif()
-
-include(FindOpenSSL)
+find_package(OpenSSL REQUIRED)
 
 include_directories(
         ${GFLAGS_INCLUDE_PATH}
@@ -104,7 +96,7 @@ if(BRPC_WITH_GLOG)
         ${OPENSSL_LIBRARIES}
         ${OPENSSL_CRYPTO_LIBRARY}
         dl
-        z
+        ZLIB::ZLIB
         )
 else()
     set(DYNAMIC_LIB
@@ -116,7 +108,7 @@ else()
         ${OPENSSL_LIBRARIES}
         ${OPENSSL_CRYPTO_LIBRARY}
         dl
-        z
+        ZLIB::ZLIB
 	)
 endif()
 
@@ -206,7 +198,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 endif()
 
 set(CMAKE_CPP_FLAGS "${DEFINE_CLOCK_GETTIME} -DBRPC_WITH_GLOG=${WITH_GLOG_VAL} -DGFLAGS_NS=${GFLAGS_NS}")
-set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -DBTHREAD_USE_FAST_PTHREAD_MUTEX -D__const__= -D_GNU_SOURCE -DUSE_SYMBOLIZE -DNO_TCMALLOC -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -DBRAFT_REVISION=\\\"${BRAFT_REVISION}\\\" -D__STRICT_ANSI__")
+set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -DBTHREAD_USE_FAST_PTHREAD_MUTEX -D__const__=__unused__ -D_GNU_SOURCE -DUSE_SYMBOLIZE -DNO_TCMALLOC -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -DBRAFT_REVISION=\\\"${BRAFT_REVISION}\\\" -D__STRICT_ANSI__")
 set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} ${DEBUG_SYMBOL}")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
     set(CMAKE_CPP_FLAGS "${CMAKE_CPP_FLAGS} -msse4 -msse4.2")
@@ -229,7 +221,9 @@ add_subdirectory(src)
 if(BUILD_UNIT_TESTS)
     add_subdirectory(test)
 endif()
+if(BUILD_TOOLS)
 add_subdirectory(tools)
+endif()
 
 file(COPY ${CMAKE_CURRENT_BINARY_DIR}/braft/
         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/output/include/braft/
